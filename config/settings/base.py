@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.sms",
     "apps.works",
     "apps.onboarding",
+    "apps.dashboard",
 ]
 
 MIDDLEWARE = [

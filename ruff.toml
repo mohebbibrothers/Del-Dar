@@ -18,6 +18,7 @@ ignore = [
 "config/settings/*.py" = ["F403", "F405"]
 "**/migrations/*.py" = ["E501", "I001", "UP"]
 "**/tests.py" = ["E501"]
+"**/urls.py" = ["E501"]
 
 [lint.isort]
 known-first-party = ["config", "apps"]
