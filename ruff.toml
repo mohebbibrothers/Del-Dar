@@ -1,0 +1,22 @@
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "B008", # Do not perform function call in argument defaults (standard DRF/FastAPI pattern)
+]
+
+[lint.per-file-ignores]
+"config/settings/*.py" = ["F403", "F405"]
+"**/migrations/*.py" = ["E501", "I001", "UP"]
+
+[lint.isort]
+known-first-party = ["config", "apps"]
