@@ -1,4 +1,5 @@
 import io
+import zipfile
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -7,6 +8,7 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.works.models import Work
+from apps.works.services import AdminZipExportService
 from apps.works.validators import validate_work_image
 
 
@@ -37,7 +39,7 @@ class TestWorkValidationAndModel:
 
     def test_create_work_record(self):
         user = User.objects.create_user(
-            national_code="9988776655",
+            national_code="0123456789",
             mobile="09199999999",
             first_name="سارا",
             last_name="رضایی",
@@ -52,3 +54,19 @@ class TestWorkValidationAndModel:
         work = Work.objects.create(user=user, image=img_file, description="تصویر پرتره خورشید")
         assert work.user == user
         assert work.description == "تصویر پرتره خورشید"
+
+        # Test single user ZIP export
+        qs = User.objects.filter(id=user.id)
+        zip_path, zip_name = AdminZipExportService.create_users_export_zip(qs)
+        assert zip_name.startswith("deldar_users_export_")
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            file_list = zf.namelist()
+            assert "profile.txt" in file_list
+            assert "1/description.txt" in file_list
+            assert "1/image.jpg" in file_list
+
+            profile_content = zf.read("profile.txt").decode("utf-8")
+            assert "0123456789" in profile_content
+            assert "سارا" in profile_content
+            assert "رضایی" in profile_content

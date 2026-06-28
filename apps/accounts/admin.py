@@ -1,5 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.http import FileResponse
+
+from apps.works.services import AdminZipExportService
 
 from .models import User
 
@@ -11,6 +14,7 @@ class UserAdmin(BaseUserAdmin):
         "mobile",
         "first_name",
         "last_name",
+        "get_works_count",
         "is_mobile_verified",
         "is_staff",
         "created_at",
@@ -18,6 +22,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ("is_mobile_verified", "is_staff", "is_superuser", "province")
     search_fields = ("national_code", "mobile", "first_name", "last_name", "postal_code")
     ordering = ("-created_at",)
+    actions = ["export_users_works_zip"]
 
     fieldsets = (
         ("احراز هویت اصلی", {"fields": ("national_code", "mobile", "password")}),
@@ -76,3 +81,18 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+    @admin.display(description="تعداد آثار ارسالی")
+    def get_works_count(self, obj):
+        return obj.works.count()
+
+    @admin.action(description="خروجی ZIP از مشخصات و گالری آثار کاربران انتخاب‌شده")
+    def export_users_works_zip(self, request, queryset):
+        if not queryset.exists():
+            self.message_user(request, "هیچ کاربری انتخاب نشده است", level=messages.WARNING)
+            return None
+
+        zip_filepath, zip_filename = AdminZipExportService.create_users_export_zip(queryset)
+        return FileResponse(
+            open(zip_filepath, "rb"), as_attachment=True, filename=zip_filename
+        )
