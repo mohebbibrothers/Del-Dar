@@ -4,6 +4,7 @@ import urllib.error
 import urllib.request
 
 from decouple import config
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,17 @@ SMS_WELCOME_PATTERN = config("SMS_WELCOME_PATTERN", default="welcome_pattern_moc
 class IranPayamakClient:
     @classmethod
     def send_pattern(cls, recipient: str, pattern_code: str, attributes: dict) -> bool:
+        if getattr(settings, "MOCK_SMS_GATEWAY", False) or getattr(
+            settings, "CELERY_TASK_ALWAYS_EAGER", False
+        ):
+            logger.info(
+                "[MOCK SMS GATEWAY] Dispatching pattern [%s] to %s with attrs: %s",
+                pattern_code,
+                recipient,
+                attributes,
+            )
+            return True
+
         payload = {
             "code": pattern_code,
             "attributes": attributes,
