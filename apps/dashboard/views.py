@@ -1,5 +1,6 @@
 import logging
 
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import generics, permissions, status, views
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -20,6 +21,10 @@ from .services import DashboardProfileService
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(
+    summary="دریافت یا به‌روزرسانی ۱۲ فیلد مشخصات فردی در داشبورد",
+    description="هشدار حیاتی برای توسعه‌دهنده فرانت‌اند: اگر کاربر قصد ویرایش شماره همراه (mobile) را دارد، ابتدا باید متد درخواست و تایید کد موبایل فراخوانی شود. در غیر این صورت این متد با خطا مواجه خواهد شد.",
+)
 class DashboardProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = DashboardProfileSerializer
@@ -42,6 +47,18 @@ class DashboardProfileView(generics.RetrieveUpdateAPIView):
 class DashboardMobileChangeRequestView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        summary="درخواست پیامک تایید جهت تغییر شماره موبایل در داشبورد",
+        request=DashboardMobileChangeRequestSerializer,
+        examples=[
+            OpenApiExample(
+                "ورودی موبایل جدید",
+                value={"new_mobile": "09129998877"},
+                request_only=True,
+            )
+        ],
+        responses={200: OpenApiResponse(description="ارسال موفق پیامک به شماره جدید")},
+    )
     def post(self, request):
         serializer = DashboardMobileChangeRequestSerializer(
             data=request.data, context={"request": request}
@@ -65,6 +82,20 @@ class DashboardMobileChangeRequestView(views.APIView):
 class DashboardMobileChangeVerifyView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        summary="تایید پیامک موبایل جدید در داشبورد",
+        request=DashboardMobileChangeVerifySerializer,
+        examples=[
+            OpenApiExample(
+                "ورودی تایید موبایل",
+                value={"new_mobile": "09129998877", "otp_code": "1234"},
+                request_only=True,
+            )
+        ],
+        responses={
+            200: OpenApiResponse(description="تایید موقت موبایل جدید در سیستم")
+        },
+    )
     def post(self, request):
         serializer = DashboardMobileChangeVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -89,6 +120,10 @@ class DashboardMobileChangeVerifyView(views.APIView):
         )
 
 
+@extend_schema(
+    summary="دریافت لیست آثار کاربر یا ارسال مستقیم اثر جدید در داشبورد",
+    description="ارسال مستقیم اثر (حداکثر تا سقف ۵۰ اثر). فایل باید JPG و زیر ۵ مگ باشد.",
+)
 class DashboardWorkListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -117,6 +152,7 @@ class DashboardWorkListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema(summary="مشاهده، ویرایش کپشن/تصویر یا حذف اثر ارسالی در داشبورد")
 class DashboardWorkDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]

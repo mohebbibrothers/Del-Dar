@@ -19,6 +19,7 @@ ignore = [
 "**/migrations/*.py" = ["E501", "I001", "UP"]
 "**/tests.py" = ["E501"]
 "**/urls.py" = ["E501"]
+"**/views.py" = ["E501"]
 
 [lint.isort]
 known-first-party = ["config", "apps"]

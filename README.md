@@ -1,4 +1,4 @@
-# Del-Dar (دلدار) Backend Architecture & Gallery Platform
+# پروژه بک‌اند «دلدار» (Del-Dar Platform)
 
 ![Django](https://img.shields.io/badge/Django-5.1-092E20?style=for-the-badge&logo=django)
 ![DRF](https://img.shields.io/badge/DRF-Enterprise_API-ff1709?style=for-the-badge&logo=django)
@@ -7,91 +7,108 @@
 ![Celery](https://img.shields.io/badge/Celery-Async_Queue-37814A?style=for-the-badge&logo=celery)
 ![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-000000?style=for-the-badge)
 
-Enterprise-grade, highly optimized, API-first backend for **Del-Dar Photography Call for Entries & Virtual Gallery**.
+سامانه جامع، استاندارد و بسیار بهینهٔ **فراخوان عکاسی و گالری مجازی دلدار** مبتنی بر معماری سرویس‌گرا (API-First).
 
 ---
 
-## 🏗️ Architectural Overview & Core Engineering Highlights
+## 🏗️ معماری مهندسی و ویژگی‌های برجسته فنی
 
-The Del-Dar platform is built upon modern **Clean Architecture** principles, enforcing strict separation of concerns across domain entities, service layers, and infrastructure gateways:
+پروژه «دلدار» با تکیه بر اصول مدرن **Clean Architecture** و رعایت دقیق تفکیک لایه‌ها (Separation of Concerns) طراحی شده است:
 
-1. **Redis-Backed Onboarding State Machine (`apps.onboarding`)**
-   - Multi-step guest registration (Personal Info -> Supplementary Info -> Gallery Uploads).
-   - Draft states are safely preserved inside Redis hashes keyed by a UUIDv4 token (`X-Draft-Token`) with a 24-hour TTL.
-   - Eliminates incomplete/orphaned database records; atomic DB transactions (`transaction.atomic`) execute only upon successful OTP confirmation.
+1. **ماشین حالت ثبت‌نام چندمرحله‌ای بر پایه Redis (`apps.onboarding`)**
+   - پیاده‌سازی چرخه ثبت‌نام کاربر مهمان در سه فاز متوالی (اطلاعات شخصی -> اطلاعات تکمیلی -> آپلود آثار).
+   - تمام داده‌ها و پیش‌نویس‌ها بدون آلوده کردن پایگاه داده اصلی، درون کش **Redis Hash** با شناسه‌ای یکتا به نام `X-Draft-Token` (تولیدشده توسط UUIDv4) و طول عمر ۲۴ ساعته نگهداری می‌شوند.
+   - فقط زمانی که کاربر پیامک تایید (OTP) را با موفقیت وارد کند، تراکنش اتمیک پایگاه داده (`transaction.atomic`) فعال شده و پروفایل کاربر به همراه آثارش به صورت قطعی ثبت می‌گردد.
 
-2. **Domain Entities & Strict Inspection (`apps.accounts`, `apps.works`)**
-   - Custom User model (`AbstractBaseUser`) utilizing Iranian National Code (`national_code`) as the unique authentication identifier.
-   - Algorithmic check-digit verification (Modulo 11) for Iranian National Codes.
-   - In-memory `Pillow` inspection validating technical constraints prior to storage persistence:
-     - Strict format whitelist: **JPEG / JPG only**.
-     - Maximum payload limit: **5 MB per file**.
-     - Dimension bounds: **1000px ≤ width, height <= 1500px**.
-   - Hard business limit enforcement: Maximum 50 works total per photographer.
+2. **هسته سفارشی کاربران و ولیدیتورهای سطح حافظه (`apps.accounts` و `apps.works`)**
+   - پیاده‌سازی Custom User Model بر پایه `AbstractBaseUser` با تنظیم فیلد `USERNAME_FIELD` روی کدملی یکتا (`national_code`).
+   - الگوریتم ریاضی کنترل‌رقم (Check Digit مدول ۱۱) جهت اعتبارسنجی کدهای ملی ایران.
+   - بازرسی فنی تصاویر در حافظه RAM توسط کتابخانه `Pillow` قبل از ذخیره روی دیسک با ۳ شرط سخت‌گیرانه:
+     1. فرمت فایل صرفاً باید **JPG / JPEG** باشد.
+     2. حجم هر فایل نباید از **۵ مگابایت** تجاوز کند.
+     3. ابعاد تصویر (عرض و ارتفاع) باید دقیقاً بین **۱۰۰۰ تا ۱۵۰۰ پیکسل** باشد.
+   - اعمال محدودیت بیزینسی حداکثر **۵۰ اثر** برای هر هنرمند.
 
-3. **Asynchronous Notification Gateway (`apps.sms`)**
-   - Abstracted HTTP client connected to `api.iranpayamak.com` pattern endpoints.
-   - Offloads OTP delivery and welcome dispatches to **Celery** workers backed by Redis broker.
-   - Auto-mocking capabilities during test suites (`CELERY_TASK_ALWAYS_EAGER`) ensuring zero network latency.
+3. **لایه سرویس پیامک و پردازش غیرهمزمان (`apps.sms`)**
+   - یکپارچه‌سازی کلاینت HTTP با درگاه `api.iranpayamak.com` جهت ارسال پترن‌های کد تایید و خوش‌آمدگویی.
+   - واگذاری کامل ارسال پیامک‌ها به کارگزار **Celery** و **Redis** جهت جلوگیری از کند شدن پاسخ‌دهی APIها.
 
-4. **Memory-Safe Super Admin Backoffice (`apps.works.services`)**
-   - Custom Django Admin actions enabling single & bulk user ZIP exports.
-   - Archives are constructed on disk via stream chunks (`chunk_size=50`) preventing RAM buffer exhaustion (OOM) when exporting thousands of high-resolution 5MB photographs.
-   - Automated Jalali (Solar Hijri) calendar formatting via `jdatetime` in exported `profile.txt` manifests.
+4. **موتور اکسپورت ادمین ضدِ هنگ (`apps.works.services`)**
+   - اکشن‌های تقویت‌شده در پنل ادمین جنگو جهت دانلود خروجی ZIP تک‌کاربره و گروهی.
+   - جهت جلوگیری از خطای کمبود حافظه (Out of Memory) در زمان دانلود هزاران عکس ۵ مگابایتی، آرشیو زیپ به صورت استریم‌شده و تکه‌تکه (`Chunked`) روی دیسک ساخته می‌شود.
+   - تبدیل تقویم میلادی به **شمسی (جلالی)** توسط `jdatetime` در فایل‌های متنیِ `profile.txt` هر هنرمند.
 
 ---
 
-## 🚀 Quickstart & Development Setup
+## 🚀 راهنمای راه‌اندازی سریع پروژه (توصیه‌شده با Virtualenv)
 
-### Prerequisites
-- Python >= 3.13
-- Redis Server (or SQLite local fallback)
-- Git
+جهت جلوگیری از تداخل پکیج‌های پایتون سیستم عامل، پیشنهاد می‌شود پروژه را درون محیط مجازی اجرا کنید:
 
-### Installation
-
-1. Clone the repository:
+### ۱. دریافت سورس کد
 ```bash
 git clone https://github.com/mohebbibrothers/Del-Dar.git
 cd Del-Dar
 ```
 
-2. Install dependencies:
+### ۲. ساخت و فعال‌سازی محیط مجازی (Virtual Environment)
+
+**در لینوکس و مک:**
 ```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+**در ویندوز (CMD / PowerShell):**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+### ۳. نصب وابستگی‌ها
+```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-3. Run database migrations:
+### ۴. اجرای مایگریشن‌های پایگاه داده
 ```bash
 python manage.py migrate
 ```
 
-4. Launch the local development server:
+### ۵. اجرای سرور توسعه محلی
 ```bash
 python manage.py runserver
 ```
 
-### 📖 API Documentation (OpenAPI / Swagger UI)
-Once running, interactive interactive API schemas are available at:
-- **Swagger UI:** `http://127.0.0.1:8000/api/docs/`
-- **OpenAPI Schema:** `http://127.0.0.1:8000/api/schema/`
+*(سرور روی آدرس `http://127.0.0.1:8000` در دسترس خواهد بود).*
 
 ---
 
-## 🧪 Quality Assurance & Test Suites
+## 📖 مستندات جامع API برای توسعه‌دهندگان فرانت‌اند (Swagger UI)
 
-The project strictly enforces **Zero Warnings & Zero Errors** policy validated by `ruff` and `pytest`.
+تمامی اندپوینت‌های پروژه مجهز به **مثال‌های دقیق درخواست (Example Value)**، **نمونه پاسخ‌ها (Example Response)** و توضیحات فارسی کامل هستند. پس از اجرای پروژه، جهت مشاهده و تست آنلاین APIها به لینک‌های زیر مراجعه کنید:
+
+- **رابط تعاملی Swagger UI:**  
+  `http://127.0.0.1:8000/api/docs/`
+- **خروجی خام OpenAPI JSON:**  
+  `http://127.0.0.1:8000/api/schema/`
+
+---
+
+## 🧪 اجرای تست‌های خودکار و تضمین کیفیت
+
+پروژه بر اساس استاندارد **Zero Warning & Zero Error** توسعه یافته است:
 
 ```bash
-# Run Django system inspection
+# بررسی سلامت ساختار جنگو
 python manage.py check
 
-# Run extreme linter checks
+# اجرای بررسی‌های دقیق سبک کد (Linter)
 ruff check .
 
-# Execute full unit & integration test suite
+# اجرای مجموعه تست‌های جامع واحد و یکپارچه
 pytest
 ```
 
 ---
-*Architected and developed with elite senior engineering standards.*
+*توسعه‌یافته با بالاترین استانداردهای معماری نرم‌افزار.*

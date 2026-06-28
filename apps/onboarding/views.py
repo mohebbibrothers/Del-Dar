@@ -4,6 +4,7 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.db import transaction
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import permissions, status, views
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -31,6 +32,48 @@ def _get_token_from_request(request) -> str:
 class DraftStateView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        summary="دریافت وضعیت کامل کش پیش‌نویس ثبت‌نام",
+        description="با ارسال هدر X-Draft-Token، تمامی اطلاعات واردشده در فرم‌های ۱، ۲ و لیست عکس‌های آپلودشده بازگشت داده می‌شود تا کاربر نیاز به تایپ مجدد نداشته باشد.",
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                description="توکن یکتای پیش‌نویس تولیدشده در مرحله اول",
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="بازخوانی موفق کش",
+                examples=[
+                    OpenApiExample(
+                        "نمونه پیش‌نویس فعال",
+                        value={
+                            "success": True,
+                            "draft_token": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+                            "draft": {
+                                "personal_info": {
+                                    "first_name": "امیر",
+                                    "last_name": "رضایی",
+                                    "mobile": "09121111111",
+                                    "national_code": "0123456789",
+                                },
+                                "supplementary_info": {"province": "تهران", "city": "تهران"},
+                                "works": [
+                                    {
+                                        "id": "work_uuid_1",
+                                        "file_path": "drafts/...",
+                                        "description": "کپشن اثر",
+                                    }
+                                ],
+                            },
+                        },
+                    )
+                ],
+            )
+        },
+    )
     def get(self, request):
         token = _get_token_from_request(request)
         draft = DraftOnboardingService.get_draft(token)
@@ -40,6 +83,29 @@ class DraftStateView(views.APIView):
 class Step1PersonalInfoView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        summary="ثبت اطلاعات شخصی (مرحله اول ثبت‌نام مهمان)",
+        description="دریافت ۶ فیلد اطلاعات فردی. سیستم به‌صورت زنده بررسی می‌کند کدملی و شماره همراه قبلاً ثبت نشده باشند. در پاسخ، هدر X-Draft-Token حاوی توکن کش بازمی‌گردد.",
+        request=Step1PersonalInfoSerializer,
+        examples=[
+            OpenApiExample(
+                "ورودی استاندارد مرحله ۱",
+                value={
+                    "first_name": "سارا",
+                    "last_name": "احمدی",
+                    "job": "معمار داخلی",
+                    "birth_date": "1992-04-10",
+                    "national_code": "0123456789",
+                    "mobile": "09123334455",
+                },
+                request_only=True,
+            )
+        ],
+        responses={
+            200: OpenApiResponse(description="ثبت در کش و صدور توکن پیش‌نویس"),
+            400: OpenApiResponse(description="خطای تکراری بودن کدملی یا موبایل"),
+        },
+    )
     def post(self, request):
         serializer = Step1PersonalInfoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -59,6 +125,33 @@ class Step1PersonalInfoView(views.APIView):
 class Step2SupplementaryInfoView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        summary="ثبت اطلاعات تکمیلی سکونت و شبکه‌های اجتماعی (مرحله دوم ثبت‌نام)",
+        description="دریافت استان، شهر، آدرس دقیق، کدپستی ۱۰ رقمی و شناسه‌های بله و تلگرام (اختیاری). ارسال هدر X-Draft-Token الزامی است.",
+        request=Step2SupplementaryInfoSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        examples=[
+            OpenApiExample(
+                "ورودی استاندارد مرحله ۲",
+                value={
+                    "province": "اصفهان",
+                    "city": "اصفهان",
+                    "address": "خیابان چهارباغ عباسی، کوچه آمادگاه، پلاک ۱۲",
+                    "postal_code": "8123456789",
+                    "bale_id": "@sara_arch",
+                    "telegram_id": "@sara_photo",
+                },
+                request_only=True,
+            )
+        ],
+    )
     def post(self, request):
         serializer = Step2SupplementaryInfoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -81,6 +174,20 @@ class Step2SupplementaryInfoView(views.APIView):
 class DraftWorkUploadView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        summary="آپلود تصویر اثر در پیش‌نویس (مرحله سوم ثبت‌نام)",
+        description="آپلود عکس با فرمت multipart/form-data. محدودیت‌های فنی: فرمت صرفاً JPG، حجم حداکثر ۵ مگابایت و ابعاد بین ۱۰۰۰ تا ۱۵۰۰ پیکسل. کپشن اثر الزامی است.",
+        request=DraftWorkUploadSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={201: OpenApiResponse(description="افزودن موفق اثر به پیش‌نویس")},
+    )
     def post(self, request):
         token = _get_token_from_request(request)
         if not token:
@@ -118,6 +225,17 @@ class DraftWorkUploadView(views.APIView):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        summary="حذف تصویر از پیش‌نویس ثبت‌نام",
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+    )
     def delete(self, request, work_id):
         token = _get_token_from_request(request)
         if not token:
@@ -135,6 +253,33 @@ class DraftWorkUploadView(views.APIView):
 class OnboardingSubmitView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        summary="ارسال نهایی ۳ فرم ثبت‌نام و درخواست پیامک OTP",
+        description="بررسی زنده اینکه مرحله ۱، مرحله ۲ و حداقل ۱ اثر در مرحله ۳ تکمیل شده باشند. سپس یک کد تایید ۴ رقمی برای موبایل کاربر پیامک می‌شود.",
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="ارسال موفق کد",
+                examples=[
+                    OpenApiExample(
+                        "پاسخ تایید پیامک",
+                        value={
+                            "success": True,
+                            "message": "کد تایید برای شماره شما ارسال شد",
+                            "mobile": "09123334455",
+                        },
+                    )
+                ],
+            )
+        },
+    )
     def post(self, request):
         token = _get_token_from_request(request)
         draft = DraftOnboardingService.get_draft(token)
@@ -172,6 +317,49 @@ class OnboardingSubmitView(views.APIView):
 class OnboardingVerifyView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        summary="تایید کد OTP، ساخت نهایی اکانت و ورود خودکار",
+        description="کد تایید وارد می‌شود. در تراکنش اتمیک دیتابیس، اکانت کاربر ایجاد شده، آثار از کش به دیتابیس منتقل شده و توکن‌های ورود خودکار (JWT Access & Refresh) صادر می‌گردد.",
+        request=OTPVerifySerializer,
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        examples=[
+            OpenApiExample(
+                "ورودی تایید ثبت‌نام",
+                value={"otp_code": "1234"},
+                request_only=True,
+            )
+        ],
+        responses={
+            201: OpenApiResponse(
+                description="ثبت‌نام قطعی و لاگین موفق",
+                examples=[
+                    OpenApiExample(
+                        "پاسخ صدور اکانت",
+                        value={
+                            "success": True,
+                            "message": "ثبت‌نام با موفقیت انجام شد و اکانت شما ایجاد گردید",
+                            "tokens": {
+                                "access": "eyJhbGciOi...",
+                                "refresh": "eyJhbGciOi...",
+                            },
+                            "user": {
+                                "national_code": "0123456789",
+                                "full_name": "سارا احمدی",
+                                "mobile": "09123334455",
+                            },
+                        },
+                    )
+                ],
+            )
+        },
+    )
     def post(self, request):
         serializer = OTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
