@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import urllib.error
 import urllib.request
 
@@ -20,9 +21,8 @@ SMS_WELCOME_PATTERN = config("SMS_WELCOME_PATTERN", default="Yta6XeoECQ")
 class IranPayamakClient:
     @classmethod
     def send_pattern(cls, recipient: str, pattern_code: str, attributes: dict) -> bool:
-        if getattr(settings, "MOCK_SMS_GATEWAY", False) or getattr(
-            settings, "CELERY_TASK_ALWAYS_EAGER", False
-        ):
+        is_testing = any("pytest" in arg or "test" == arg for arg in sys.argv)
+        if getattr(settings, "MOCK_SMS_GATEWAY", False) or is_testing:
             logger.info(
                 "[MOCK SMS GATEWAY] Dispatching pattern [%s] to %s with attrs: %s",
                 pattern_code,
