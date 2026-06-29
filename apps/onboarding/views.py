@@ -88,8 +88,17 @@ class Step1PersonalInfoView(generics.GenericAPIView):
 
     @extend_schema(
         summary="ثبت اطلاعات شخصی (مرحله اول ثبت‌نام مهمان)",
-        description="دریافت ۶ فیلد اطلاعات فردی. سیستم به‌صورت زنده بررسی می‌کند کدملی و شماره همراه قبلاً ثبت نشده باشند. در پاسخ، هدر X-Draft-Token حاوی توکن کش بازمی‌گردد.",
+        description="دریافت ۶ فیلد اطلاعات فردی. نکته مهم سناریوی بازگشت به عقب: اگر کاربر برای اولین بار وارد این متد می‌شود هدر X-Draft-Token را ارسال نمی‌کند؛ اما هنگام بازگشت به عقب جهت ویرایش شماره موبایل، ارسال این هدر الزامی است تا اطلاعات فرم‌های بعد نپرد.",
         request=Step1PersonalInfoSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="X-Draft-Token",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=False,
+                description="توکن کش پیش‌نویس (اختیاری در بار اول؛ الزامی هنگام ویرایش بازگشت به عقب)",
+            )
+        ],
         examples=[
             OpenApiExample(
                 "ورودی استاندارد مرحله ۱",
