@@ -13,8 +13,8 @@ SMS_API_KEY = config(
     "SMS_API_KEY", default="UbVzvuEiOEJR3ZZMF5cBPCPUSTNT9uuELHFHNkihi2JpCPCYE0"
 )
 SMS_LINE_NUMBER = config("SMS_LINE_NUMBER", default="50002178584000")
-SMS_OTP_PATTERN = config("SMS_OTP_PATTERN", default="ibiTbHUP5O")
-SMS_WELCOME_PATTERN = config("SMS_WELCOME_PATTERN", default="welcome_pattern_mock")
+SMS_OTP_PATTERN = config("SMS_OTP_PATTERN", default="pXMLHeNMQW")
+SMS_WELCOME_PATTERN = config("SMS_WELCOME_PATTERN", default="Yta6XeoECQ")
 
 
 class IranPayamakClient:
@@ -32,12 +32,14 @@ class IranPayamakClient:
             return True
 
         payload = {
-            "code": pattern_code,
-            "attributes": attributes,
+            "code": pattern_code.strip(),
             "recipient": recipient,
             "line_number": SMS_LINE_NUMBER,
             "number_format": "persian",
         }
+        if attributes:
+            payload["attributes"] = attributes
+
         data = json.dumps(payload).encode("utf-8")
 
         headers = {

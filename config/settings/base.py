@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-del-dar-high-level-secret-key-2026")
 
 DEBUG = False
-MOCK_SMS_GATEWAY = config("MOCK_SMS_GATEWAY", default=True, cast=bool)
+MOCK_SMS_GATEWAY = config("MOCK_SMS_GATEWAY", default=False, cast=bool)
 
 ALLOWED_HOSTS = []
 
