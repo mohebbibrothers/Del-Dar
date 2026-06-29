@@ -117,6 +117,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Backend API documentation for Del-Dar Photography Call & Gallery",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 REDIS_HOST = config("REDIS_HOST", default="127.0.0.1")

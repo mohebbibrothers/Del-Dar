@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.db import transaction
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema
-from rest_framework import permissions, status, views
+from rest_framework import generics, permissions, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -29,8 +30,9 @@ def _get_token_from_request(request) -> str:
     return request.headers.get("X-Draft-Token", "")
 
 
-class DraftStateView(views.APIView):
+class DraftStateView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = None
 
     @extend_schema(
         summary="دریافت وضعیت کامل کش پیش‌نویس ثبت‌نام",
@@ -80,8 +82,9 @@ class DraftStateView(views.APIView):
         return Response({"success": True, "draft": draft, "draft_token": token})
 
 
-class Step1PersonalInfoView(views.APIView):
+class Step1PersonalInfoView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = Step1PersonalInfoSerializer
 
     @extend_schema(
         summary="ثبت اطلاعات شخصی (مرحله اول ثبت‌نام مهمان)",
@@ -107,7 +110,7 @@ class Step1PersonalInfoView(views.APIView):
         },
     )
     def post(self, request):
-        serializer = Step1PersonalInfoSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         token = _get_token_from_request(request)
@@ -122,8 +125,9 @@ class Step1PersonalInfoView(views.APIView):
         return response
 
 
-class Step2SupplementaryInfoView(views.APIView):
+class Step2SupplementaryInfoView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = Step2SupplementaryInfoSerializer
 
     @extend_schema(
         summary="ثبت اطلاعات تکمیلی سکونت و شبکه‌های اجتماعی (مرحله دوم ثبت‌نام)",
@@ -153,7 +157,7 @@ class Step2SupplementaryInfoView(views.APIView):
         ],
     )
     def post(self, request):
-        serializer = Step2SupplementaryInfoSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         token = _get_token_from_request(request)
@@ -171,8 +175,10 @@ class Step2SupplementaryInfoView(views.APIView):
         )
 
 
-class DraftWorkUploadView(views.APIView):
+class DraftWorkUploadView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = DraftWorkUploadSerializer
 
     @extend_schema(
         summary="آپلود تصویر اثر در پیش‌نویس (مرحله سوم ثبت‌نام)",
@@ -203,7 +209,7 @@ class DraftWorkUploadView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = DraftWorkUploadSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         img_file = serializer.validated_data["image"]
@@ -224,6 +230,11 @@ class DraftWorkUploadView(views.APIView):
             {"success": True, "message": "اثر به پیش‌نویس اضافه شد", "draft": updated_draft},
             status=status.HTTP_201_CREATED,
         )
+
+
+class DraftWorkDeleteView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = None
 
     @extend_schema(
         summary="حذف تصویر از پیش‌نویس ثبت‌نام",
@@ -250,8 +261,9 @@ class DraftWorkUploadView(views.APIView):
         return Response({"success": True, "draft": updated_draft})
 
 
-class OnboardingSubmitView(views.APIView):
+class OnboardingSubmitView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = None
 
     @extend_schema(
         summary="ارسال نهایی ۳ فرم ثبت‌نام و درخواست پیامک OTP",
@@ -314,8 +326,9 @@ class OnboardingSubmitView(views.APIView):
         )
 
 
-class OnboardingVerifyView(views.APIView):
+class OnboardingVerifyView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = OTPVerifySerializer
 
     @extend_schema(
         summary="تایید کد OTP، ساخت نهایی اکانت و ورود خودکار",
@@ -361,7 +374,7 @@ class OnboardingVerifyView(views.APIView):
         },
     )
     def post(self, request):
-        serializer = OTPVerifySerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["otp_code"]
 
