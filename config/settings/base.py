@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third-party apps
+    "jazzmin",
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
@@ -143,6 +144,80 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+JAZZMIN_SETTINGS = {
+    "site_title": "پنل مدیریت دلدار",
+    "site_header": "دلدار",
+    "site_brand": "Del-Dar Admin",
+    "site_logo": None,
+    "welcome_sign": "به پنل مدیریت دلدار خوش آمدید",
+    "copyright": "Del-Dar Photography Call & Gallery",
+    "search_model": ["accounts.User", "works.Work"],
+    "user_avatar": None,
+    "topmenu_links": [
+        {"name": "مستندات API", "url": "swagger-ui", "permissions": ["is_staff"]},
+        {"name": "صفحه اصلی سایت", "url": "/", "new_window": True},
+    ],
+    "usermenu_links": [
+        {"name": "ویرایش پروفایل", "url": "admin:auth_user_change", "permissions": ["is_staff"]},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": [
+        "accounts",
+        "works",
+        "sms",
+    ],
+    "icons": {
+        "accounts": "fas fa-users",
+        "accounts.User": "fas fa-user",
+        "works": "fas fa-images",
+        "works.Work": "fas fa-photo-video",
+        "auth": "fas fa-shield-alt",
+        "auth.Group": "fas fa-layer-group",
+    },
+    "default_icon_parents": "fas fa-circle",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": True,
+    "use_google_fonts_cdn": True,
+    "show_ui_builder": False,
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "accounts.user": "vertical_tabs",
+        "works.work": "collapsible",
+    },
+    "no_sidebar": False,
+    "language_chooser": True,
+    "custom_css": None,
+    "custom_js": None,
+    "custom_footer": "Del-Dar © 2026 — Built with Django & Jazzmin",
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-dark",
+    "accent": "accent-primary",
+    "navbar": "navbar-dark bg-primary",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": True,
+    "theme": "darkly",
+    "dark_mode_theme": "darkly",
+}
 
 LOGGING = {
     "version": 1,
