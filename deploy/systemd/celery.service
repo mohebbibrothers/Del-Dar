@@ -1,0 +1,16 @@
+Description=Celery worker for Del-Dar API
+After=network.target redis.service
+
+[Service]
+User=deldar
+Group=www-data
+WorkingDirectory=/opt/deldar
+ExecStart=/opt/deldar/venv/bin/celery -A config worker -l info --concurrency=2
+ExecStop=/bin/kill -s TERM $MAINPID
+Restart=always
+RestartSec=5
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+EnvironmentFile=/opt/deldar/.env
+
+[Install]
+WantedBy=multi-user.target
