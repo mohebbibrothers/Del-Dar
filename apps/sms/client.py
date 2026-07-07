@@ -37,8 +37,7 @@ class IranPayamakClient:
             "line_number": SMS_LINE_NUMBER,
             "number_format": "persian",
         }
-        if attributes:
-            payload["attributes"] = attributes
+        payload["attributes"] = attributes if attributes is not None else {}
 
         data = json.dumps(payload).encode("utf-8")
 
