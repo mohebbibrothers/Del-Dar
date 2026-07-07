@@ -15,7 +15,7 @@ SMS_API_KEY = config(
 )
 SMS_LINE_NUMBER = config("SMS_LINE_NUMBER", default="50002178584000")
 SMS_OTP_PATTERN = config("SMS_OTP_PATTERN", default="pXMLHeNMQW")
-SMS_WELCOME_PATTERN = config("SMS_WELCOME_PATTERN", default="Yta6XeoECQ")
+SMS_WELCOME_PATTERN = config("SMS_WELCOME_PATTERN", default="c1ELnYRXt0")
 
 
 class IranPayamakClient:
