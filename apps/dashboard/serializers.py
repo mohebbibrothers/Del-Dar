@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+import jdatetime
+
 from apps.core.validators import (
     validate_iranian_mobile,
     validate_national_code,
@@ -14,10 +16,45 @@ from .services import DashboardProfileService
 User = get_user_model()
 
 
+class JalaliDateField(serializers.DateField):
+    """
+    Handles Jalali dates for both input and output.
+    - Input: accepts Jalali (YYYY-MM-DD where year is 1300-1500) or Gregorian
+    - Output: always returns Jalali format (YYYY/MM/DD)
+    """
+
+    def to_internal_value(self, data):
+        if data is None:
+            return None
+        if isinstance(data, str) and "-" in data:
+            parts = data.split("-")
+            if len(parts) == 3:
+                try:
+                    year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+                    if 1300 <= year <= 1500:
+                        jd = jdatetime.date(year, month, day)
+                        return jd.togregorian()
+                except (ValueError, TypeError):
+                    pass
+        return super().to_internal_value(data)
+
+    def to_representation(self, value):
+        if value is None:
+            return None
+        try:
+            if 1300 <= value.year <= 1500:
+                return f"{value.year}/{value.month:02d}/{value.day:02d}"
+            jd = jdatetime.date.fromgregorian(date=value)
+            return f"{jd.year}/{jd.month:02d}/{jd.day:02d}"
+        except (ValueError, TypeError, OverflowError):
+            return None
+
+
 class DashboardProfileSerializer(serializers.ModelSerializer):
     national_code = serializers.CharField(max_length=10, validators=[validate_national_code])
     mobile = serializers.CharField(max_length=11, validators=[validate_iranian_mobile])
     postal_code = serializers.CharField(max_length=10, validators=[validate_postal_code])
+    birth_date = JalaliDateField()
 
     class Meta:
         model = User
