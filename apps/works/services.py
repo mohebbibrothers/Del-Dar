@@ -2,6 +2,7 @@ import logging
 import os
 import uuid
 import zipfile
+from datetime import datetime
 
 import jdatetime
 from django.conf import settings
@@ -13,10 +14,10 @@ logger = logging.getLogger(__name__)
 class AdminZipExportService:
     @classmethod
     def create_users_export_zip(cls, users_queryset) -> tuple[str, str]:
-        export_id = str(uuid.uuid4())
+        now = datetime.now().strftime("%Y%m%d")
+        zip_filename = f"del-dar-{now}.zip"
         export_dir = settings.MEDIA_ROOT / "temp_exports"
         export_dir.mkdir(parents=True, exist_ok=True)
-        zip_filename = f"deldar_users_export_{export_id[:8]}.zip"
         zip_filepath = export_dir / zip_filename
 
         is_bulk = users_queryset.count() > 1
@@ -54,14 +55,15 @@ class AdminZipExportService:
                         continue
 
                     original_filename = cls._resolve_filename(work)
-                    base_name = f"{idx}_{original_filename}"
+                    name_without_ext, ext = os.path.splitext(original_filename)
+                    base_name = f"{idx}_{name_without_ext}"
 
                     # image file: 1_book.jpg
-                    img_path = os.path.join(gallery_folder, base_name)
+                    img_path = os.path.join(gallery_folder, f"{base_name}{ext}")
                     with default_storage.open(work.image.name, "rb") as img_file:
                         zf.writestr(img_path, img_file.read())
 
-                    # description file: 1_book.txt
+                    # description file: 1_book.txt (NOT 1_book.jpg.txt)
                     desc_path = os.path.join(gallery_folder, f"{base_name}.txt")
                     zf.writestr(desc_path, (work.description or "").encode("utf-8"))
 
@@ -69,10 +71,10 @@ class AdminZipExportService:
 
     @classmethod
     def create_works_export_zip(cls, works_queryset) -> tuple[str, str]:
-        export_id = str(uuid.uuid4())
+        now = datetime.now().strftime("%Y%m%d")
+        zip_filename = f"del-dar-works-{now}.zip"
         export_dir = settings.MEDIA_ROOT / "temp_exports"
         export_dir.mkdir(parents=True, exist_ok=True)
-        zip_filename = f"deldar_works_export_{export_id[:8]}.zip"
         zip_filepath = export_dir / zip_filename
 
         works = works_queryset.select_related("user").order_by("created_at", "id")
@@ -92,8 +94,9 @@ class AdminZipExportService:
                 # description
                 head = f"عکاس: {user.full_name} ({user.national_code})"
                 desc_text = f"{head}\nکپشن:\n{work.description}"
+                name_without_ext, _ = os.path.splitext(original_filename)
                 zf.writestr(
-                    os.path.join(folder_name, f"{original_filename}.txt"),
+                    os.path.join(folder_name, f"{name_without_ext}.txt"),
                     desc_text.encode("utf-8"),
                 )
 
@@ -113,10 +116,7 @@ class AdminZipExportService:
     def _format_user_profile_text(cls, user) -> str:
         birth_text = "---"
         if user.birth_date:
-            # Check if birth_date was stored as Jalali date misinterpreted as Gregorian
-            # If year is between 1300-1500, it's likely a Jalali date stored as Gregorian
             if 1300 <= user.birth_date.year <= 1500:
-                # It's already in Jalali format, just use it directly
                 jd_birth = jdatetime.date(
                     user.birth_date.year, user.birth_date.month, user.birth_date.day
                 )
