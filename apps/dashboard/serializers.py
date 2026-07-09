@@ -26,8 +26,9 @@ class JalaliDateField(serializers.DateField):
     def to_internal_value(self, data):
         if data is None:
             return None
-        if isinstance(data, str) and "-" in data:
-            parts = data.split("-")
+        if isinstance(data, str) and ("-" in data or "/" in data):
+            sep = "-" if "-" in data else "/"
+            parts = data.split(sep)
             if len(parts) == 3:
                 try:
                     year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
