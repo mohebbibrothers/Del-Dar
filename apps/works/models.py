@@ -21,14 +21,20 @@ class Work(TimeStampedModel):
         validators=[validate_work_image],
         verbose_name="فایل تصویر",
     )
+    original_filename = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="نام اصلی فایل",
+    )
     description = models.TextField(verbose_name="توضیحات و کپشن اثر")
 
     class Meta:
         verbose_name = "اثر عکاسی"
         verbose_name_plural = "آثار عکاسی"
-        ordering = ["-created_at"]
+        ordering = ["created_at", "id"]
         indexes = [
-            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["user", "created_at", "id"]),
         ]
 
     def __str__(self):

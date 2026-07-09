@@ -1,6 +1,7 @@
 import logging
 import uuid
 
+import jdatetime
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -24,6 +25,35 @@ from .services import DraftOnboardingService
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+def _jalali_to_gregorian_date(value):
+    """
+    Convert Jalali date to Gregorian.
+    Handles both date objects and YYYY-MM-DD strings.
+    If year is between 1300-1500, treats it as Jalali.
+    """
+    if value is None:
+        return None
+
+    year, month, day = None, None, None
+
+    if hasattr(value, "year"):
+        year, month, day = value.year, value.month, value.day
+    elif isinstance(value, str) and "-" in value:
+        parts = value.split("-")
+        if len(parts) == 3:
+            try:
+                year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+            except ValueError:
+                return value
+    else:
+        return value
+
+    if 1300 <= year <= 1500:
+        jd = jdatetime.date(year, month, day)
+        return jd.togregorian()
+    return value
 
 
 def _get_token_from_request(request) -> str:
@@ -232,6 +262,7 @@ class DraftWorkUploadView(generics.GenericAPIView):
             "id": work_id,
             "file_path": saved_path,
             "description": desc,
+            "original_filename": img_file.name,
         }
         updated_draft = DraftOnboardingService.add_work(token, work_item)
 
@@ -402,13 +433,15 @@ class OnboardingVerifyView(generics.GenericAPIView):
             return Response({"success": False, "error": "کد وارد شده صحیح نیست"}, status=400)
 
         with transaction.atomic():
+            birth_date = _jalali_to_gregorian_date(personal.get("birth_date"))
+
             user = User.objects.create_user(
                 national_code=personal["national_code"],
                 mobile=mobile,
                 first_name=personal["first_name"],
                 last_name=personal["last_name"],
                 job=personal["job"],
-                birth_date=personal["birth_date"],
+                birth_date=birth_date,
                 province=supp["province"],
                 city=supp["city"],
                 address=supp["address"],
@@ -423,6 +456,7 @@ class OnboardingVerifyView(generics.GenericAPIView):
                     user=user,
                     image=item["file_path"],
                     description=item["description"],
+                    original_filename=item.get("original_filename", ""),
                 )
 
         DraftOnboardingService.clear_draft(token)
