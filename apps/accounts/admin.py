@@ -1,7 +1,9 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db import models
 from django.http import FileResponse
 
+from apps.core.jalali_admin import JalaliAdminDateField
 from apps.works.services import AdminZipExportService
 
 from .models import User
@@ -59,6 +61,9 @@ class UserAdmin(BaseUserAdmin):
         ("تاریخ‌ها", {"fields": ("created_at", "updated_at")}),
     )
     readonly_fields = ("created_at", "updated_at")
+    formfield_overrides = {
+        models.DateField: {"form_class": JalaliAdminDateField},
+    }
     add_fieldsets = (
         (
             None,
