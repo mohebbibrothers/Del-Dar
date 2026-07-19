@@ -14,6 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.sms.services import OTPService
 from apps.sms.tasks import send_otp_sms_task, send_welcome_sms_task
 from apps.works.models import Work
+from apps.core.validators import normalize_digits
 
 from .serializers import (
     DraftWorkUploadSerializer,
@@ -152,9 +153,13 @@ class Step1PersonalInfoView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        data = dict(serializer.validated_data)
+        data["mobile"] = normalize_digits(data["mobile"])
+        data["national_code"] = normalize_digits(data["national_code"])
+
         token = _get_token_from_request(request)
         new_token, draft = DraftOnboardingService.init_or_update_draft(
-            token, {"personal_info": serializer.validated_data}
+            token, {"personal_info": data}
         )
 
         response = Response(
@@ -199,6 +204,10 @@ class Step2SupplementaryInfoView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        data = dict(serializer.validated_data)
+        if data.get("postal_code"):
+            data["postal_code"] = normalize_digits(data["postal_code"])
+
         token = _get_token_from_request(request)
         if not token:
             return Response(
@@ -207,7 +216,7 @@ class Step2SupplementaryInfoView(generics.GenericAPIView):
             )
 
         _, draft = DraftOnboardingService.init_or_update_draft(
-            token, {"supplementary_info": serializer.validated_data}
+            token, {"supplementary_info": data}
         )
         return Response(
             {"success": True, "message": "اطلاعات تکمیلی با موفقیت ثبت شد", "draft": draft}

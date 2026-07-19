@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.sms.services import OTPService
 from apps.sms.tasks import send_otp_sms_task
+from apps.core.validators import normalize_digits
 
 from .serializers import AuthLoginRequestSerializer, AuthLoginVerifySerializer
 
@@ -66,7 +67,7 @@ class AuthLoginRequestView(views.APIView):
     def post(self, request):
         serializer = AuthLoginRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ident = serializer.validated_data["identifier"]
+        ident = normalize_digits(serializer.validated_data["identifier"])
 
         user = User.objects.filter(Q(mobile=ident) | Q(national_code=ident)).first()
         if not user:
@@ -144,7 +145,7 @@ class AuthLoginVerifyView(views.APIView):
     def post(self, request):
         serializer = AuthLoginVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ident = serializer.validated_data["identifier"]
+        ident = normalize_digits(serializer.validated_data["identifier"])
         code = serializer.validated_data["otp_code"]
 
         user = User.objects.filter(Q(mobile=ident) | Q(national_code=ident)).first()

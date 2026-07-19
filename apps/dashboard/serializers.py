@@ -7,6 +7,7 @@ from apps.core.validators import (
     validate_iranian_mobile,
     validate_national_code,
     validate_postal_code,
+    normalize_digits,
 )
 from apps.works.models import Work
 from apps.works.validators import validate_work_image
@@ -14,6 +15,15 @@ from apps.works.validators import validate_work_image
 from .services import DashboardProfileService
 
 User = get_user_model()
+
+
+class NormalizedDigitField(serializers.CharField):
+    """CharField that normalizes Persian/Arabic digits to English before validation."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            data = normalize_digits(data)
+        return super().to_internal_value(data)
 
 
 class JalaliDateField(serializers.DateField):
@@ -52,9 +62,9 @@ class JalaliDateField(serializers.DateField):
 
 
 class DashboardProfileSerializer(serializers.ModelSerializer):
-    national_code = serializers.CharField(max_length=10, validators=[validate_national_code])
-    mobile = serializers.CharField(max_length=11, validators=[validate_iranian_mobile])
-    postal_code = serializers.CharField(max_length=10, validators=[validate_postal_code])
+    national_code = NormalizedDigitField(max_length=10, validators=[validate_national_code])
+    mobile = NormalizedDigitField(max_length=11, validators=[validate_iranian_mobile])
+    postal_code = NormalizedDigitField(max_length=10, validators=[validate_postal_code])
     birth_date = JalaliDateField()
 
     class Meta:
@@ -100,7 +110,7 @@ class DashboardProfileSerializer(serializers.ModelSerializer):
 
 
 class DashboardMobileChangeRequestSerializer(serializers.Serializer):
-    new_mobile = serializers.CharField(max_length=11, validators=[validate_iranian_mobile])
+    new_mobile = NormalizedDigitField(max_length=11, validators=[validate_iranian_mobile])
 
     def validate_new_mobile(self, value):
         user = self.context["request"].user
@@ -112,7 +122,7 @@ class DashboardMobileChangeRequestSerializer(serializers.Serializer):
 
 
 class DashboardMobileChangeVerifySerializer(serializers.Serializer):
-    new_mobile = serializers.CharField(max_length=11, validators=[validate_iranian_mobile])
+    new_mobile = NormalizedDigitField(max_length=11, validators=[validate_iranian_mobile])
     otp_code = serializers.CharField(max_length=10)
 
 
