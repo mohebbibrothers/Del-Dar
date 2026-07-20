@@ -9,7 +9,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.sms.services import OTPService
 from apps.sms.tasks import send_otp_sms_task
-from apps.core.validators import normalize_digits
 
 from .serializers import AuthLoginRequestSerializer, AuthLoginVerifySerializer
 
@@ -22,17 +21,17 @@ class AuthLoginRequestView(views.APIView):
 
     @extend_schema(
         summary="درخواست پیامک ورود (OTP) با موبایل یا کدملی",
-        description="کاربران ثبت‌نام‌شده، شماره موبایل ۱۱ رقمی یا کدملی ۱۰ رقمی خود را ارسال می‌کنند. در صورت معتبر بودن اکانت، یک کد تایید ۴ رقمی پیامک می‌شود.",
+        description="کاربران ثبت‌نام‌شده، شماره موبایل ۱ رقمی یا کدملی ۱۰ رقمی خود را ارسال می‌کنند. در صورت معتبر بودن اکانت، یک کد تایید ۴ رقمی پیامک می‌شود.",
         request=AuthLoginRequestSerializer,
         examples=[
             OpenApiExample(
                 "مثال ارسال موبایل",
-                value={"identifier": "09121111111"},
+                value={"identifier": "۰۹۱۲۱۱۱۱۱۱۱"},
                 request_only=True,
             ),
             OpenApiExample(
                 "مثال ارسال کدملی",
-                value={"identifier": "0123456789"},
+                value={"identifier": "۰۱۲۳۵۶۷۸۹"},
                 request_only=True,
             ),
         ],
@@ -67,7 +66,7 @@ class AuthLoginRequestView(views.APIView):
     def post(self, request):
         serializer = AuthLoginRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ident = normalize_digits(serializer.validated_data["identifier"])
+        ident = serializer.validated_data["identifier"]
 
         user = User.objects.filter(Q(mobile=ident) | Q(national_code=ident)).first()
         if not user:
@@ -105,7 +104,7 @@ class AuthLoginVerifyView(views.APIView):
         examples=[
             OpenApiExample(
                 "مثال ورودی",
-                value={"identifier": "09121111111", "otp_code": "1234"},
+                value={"identifier": "۰۹۱۲۱۱۱۱۱", "otp_code": "۱۲۴"},
                 request_only=True,
             )
         ],
@@ -145,7 +144,7 @@ class AuthLoginVerifyView(views.APIView):
     def post(self, request):
         serializer = AuthLoginVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ident = normalize_digits(serializer.validated_data["identifier"])
+        ident = serializer.validated_data["identifier"]
         code = serializer.validated_data["otp_code"]
 
         user = User.objects.filter(Q(mobile=ident) | Q(national_code=ident)).first()

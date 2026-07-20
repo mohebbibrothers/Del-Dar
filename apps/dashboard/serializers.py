@@ -29,14 +29,15 @@ class NormalizedDigitField(serializers.CharField):
 class JalaliDateField(serializers.DateField):
     """
     Handles Jalali dates for both input and output.
-    - Input: accepts Jalali (YYYY-MM-DD where year is 1300-1500) or Gregorian
+    - Input: accepts Jalali (YYYY-MM-DD or YYYY/MM/DD with Persian/Arabic/English digits) or Gregorian
     - Output: always returns Jalali format (YYYY/MM/DD)
     """
 
     def to_internal_value(self, data):
         if data is None:
             return None
-        if isinstance(data, str) and ("-" in data or "/" in data):
+        if isinstance(data, str):
+            data = normalize_digits(data)
             sep = "-" if "-" in data else "/"
             parts = data.split(sep)
             if len(parts) == 3:
@@ -123,7 +124,7 @@ class DashboardMobileChangeRequestSerializer(serializers.Serializer):
 
 class DashboardMobileChangeVerifySerializer(serializers.Serializer):
     new_mobile = NormalizedDigitField(max_length=11, validators=[validate_iranian_mobile])
-    otp_code = serializers.CharField(max_length=10)
+    otp_code = NormalizedDigitField(max_length=10)
 
 
 class DashboardWorkSerializer(serializers.ModelSerializer):

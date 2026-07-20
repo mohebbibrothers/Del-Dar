@@ -31,23 +31,26 @@ User = get_user_model()
 def _jalali_to_gregorian_date(value):
     """
     Convert Jalali date to Gregorian.
-    Handles both date objects and YYYY-MM-DD strings.
+    Handles date objects, YYYY-MM-DD and YYYY/MM/DD strings.
+    Accepts Persian/Arabic/English digits.
     If year is between 1300-1500, treats it as Jalali.
     """
     if value is None:
         return None
 
-    year, month, day = None, None, None
-
     if hasattr(value, "year"):
         year, month, day = value.year, value.month, value.day
-    elif isinstance(value, str) and "-" in value:
-        parts = value.split("-")
+    elif isinstance(value, str):
+        value = normalize_digits(value)
+        sep = "-" if "-" in value else "/"
+        parts = value.split(sep)
         if len(parts) == 3:
             try:
                 year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
             except ValueError:
                 return value
+        else:
+            return value
     else:
         return value
 
@@ -153,13 +156,9 @@ class Step1PersonalInfoView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        data = dict(serializer.validated_data)
-        data["mobile"] = normalize_digits(data["mobile"])
-        data["national_code"] = normalize_digits(data["national_code"])
-
         token = _get_token_from_request(request)
         new_token, draft = DraftOnboardingService.init_or_update_draft(
-            token, {"personal_info": data}
+            token, {"personal_info": serializer.validated_data}
         )
 
         response = Response(
@@ -204,10 +203,6 @@ class Step2SupplementaryInfoView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        data = dict(serializer.validated_data)
-        if data.get("postal_code"):
-            data["postal_code"] = normalize_digits(data["postal_code"])
-
         token = _get_token_from_request(request)
         if not token:
             return Response(
@@ -216,7 +211,7 @@ class Step2SupplementaryInfoView(generics.GenericAPIView):
             )
 
         _, draft = DraftOnboardingService.init_or_update_draft(
-            token, {"supplementary_info": data}
+            token, {"supplementary_info": serializer.validated_data}
         )
         return Response(
             {"success": True, "message": "اطلاعات تکمیلی با موفقیت ثبت شد", "draft": draft}
